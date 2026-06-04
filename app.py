@@ -5,7 +5,7 @@ import io
 import datetime
 import pytz
 
-# Timezone Rule Anchor
+# Timezone Enforcer Matrix
 IST = pytz.timezone('Asia/Kolkata')
 now_ist = datetime.datetime.now(IST)
 
@@ -105,7 +105,7 @@ if st.sidebar.button("🚀 Process Operational Records", use_container_width=Tru
     
     if raw_09 is None and raw_10 is not None:
         raw_09 = raw_10.copy()
-        st.session_state.orphan_log.append("`[BUG B-02 ALERT]` Slot 0.9 fallback activated using Consolidated COD structures.")
+        st.session_state.orphan_log.append("`[BUG B-02 ALERT]` Slot 0.9 fallback activated using Consolidated COD data.")
 
     TRANSIT_COLS = ['Received', 'Same Day Invoiced', 'D0 Delivered', 'D0 Redirected', 'D0 Returned', 'D1 Delivered', 'D1 Redirected', 'D1 Returned']
     def compile_transit_family(dfs_list):
@@ -262,9 +262,9 @@ if st.sidebar.button("🚀 Process Operational Records", use_container_width=Tru
         else:
             ws.merge_range(0, start_col, 0, len(specification) - 1, group_anchor, style_main_header)
 
+    # Sheet 1 Build
     ws1 = workbook_obj.add_worksheet('Raw Data Layout')
     build_merged_headers(ws1, header_mapping_a)
-    
     r_idx = 2
     for item_idx, r in core_ledger.iterrows():
         ws1.set_row(r_idx, 19)
@@ -301,37 +301,154 @@ if st.sidebar.button("🚀 Process Operational Records", use_container_width=Tru
     ws1.write_formula(r_idx, 12, f"=SUM(M3:M{r_idx})", format_int)
     ws1.write_formula(r_idx, 16, f"=SUM(Q3:Q{r_idx})", format_int)
 
-    # Sheet 2 Setup
+    subdivs = ['ASP Karad West', 'SDIP Karad East', 'SDIP Vaduj']
+
+    # Sheet 2 Build
     ws2 = workbook_obj.add_worksheet('SDn wise Only SO')
     build_merged_headers(ws2, header_mapping_b)
     df_so_filtered = core_ledger[core_ledger['office-type-code'].isin(['SPO', 'HPO'])].copy()
     so_idx = 2
-    for item_idx, r in df_so_filtered.iterrows():
-        ws2.set_row(so_idx, 19)
-        ws2.write(so_idx, 0, item_idx + 1, format_ctr)
-        ws2.write(so_idx, 1, r['Sub Division'], format_txt)
-        ws2.write(so_idx, 2, r['Sub Office'], format_txt)
-        ws2.write(so_idx, 3, r['par_Received'], format_int)
-        ws2.write(so_idx, 4, r['val_par_d0'], format_pct)
-        ws2.write(so_idx, 5, r['val_par_d1'], format_pct)
-        ws2.write(so_idx, 6, r['doc_Received'], format_int)
-        ws2.write(so_idx, 7, r['val_doc_d0'], format_pct)
-        ws2.write(so_idx, 8, r['val_doc_d1'], format_pct)
-        ws2.write(so_idx, 9, r['all_Received'], format_int)
-        ws2.write(so_idx, 10, r['val_all_d0'], format_pct)
-        ws2.write(so_idx, 11, r['val_all_d1'], format_pct)
-        ws2.write(so_idx, 12, r['val_prod'], format_pct)
-        ws2.write(so_idx, 13, r['val_dss_d'], format_pct)
-        ws2.write(so_idx, 14, r['val_dss_c'], format_pct)
-        ws2.write(so_idx, 15, r['val_cod_d'], format_pct)
-        ws2.write(so_idx, 16, r['val_cod_c'], format_pct)
-        so_idx += 1
+    for sdn in subdivs:
+        df_sub = df_so_filtered[df_so_filtered['Sub Division'] == sdn]
+        if df_sub.empty: continue
+        b_start = so_idx + 1
+        for item_idx, r in df_sub.reset_index(drop=True).iterrows():
+            ws2.set_row(so_idx, 19)
+            ws2.write(so_idx, 0, item_idx + 1, format_ctr)
+            ws2.write(so_idx, 1, r['Sub Division'], format_txt)
+            ws2.write(so_idx, 2, r['Sub Office'], format_txt)
+            ws2.write(so_idx, 3, r['par_Received'], format_int)
+            ws2.write(so_idx, 4, r['val_par_d0'], format_pct)
+            ws2.write(so_idx, 5, r['val_par_d1'], format_pct)
+            ws2.write(so_idx, 6, r['doc_Received'], format_int)
+            ws2.write(so_idx, 7, r['val_doc_d0'], format_pct)
+            ws2.write(so_idx, 8, r['val_doc_d1'], format_pct)
+            ws2.write(so_idx, 9, r['all_Received'], format_int)
+            ws2.write(so_idx, 10, r['val_all_d0'], format_pct)
+            ws2.write(so_idx, 11, r['val_all_d1'], format_pct)
+            ws2.write(so_idx, 12, r['val_prod'], format_pct)
+            ws2.write(so_idx, 13, r['val_dss_d'], format_pct)
+            ws2.write(so_idx, 14, r['val_dss_c'], format_pct)
+            ws2.write(so_idx, 15, r['val_cod_d'], format_pct)
+            ws2.write(so_idx, 16, r['val_cod_c'], format_pct)
+            so_idx += 1
+        ws2.set_row(so_idx, 22)
+        for c in range(17): ws2.write_blank(so_idx, c, "", style_sub_total)
+        ws2.write(so_idx, 1, f"{sdn} Sub Total", style_sub_total)
+        ws2.write_formula(so_idx, 3, f"=SUM(D{b_start}:D{so_idx})", format_int)
+        ws2.write_formula(so_idx, 6, f"=SUM(G{b_start}:G{so_idx})", format_int)
+        ws2.write_formula(so_idx, 9, f"=SUM(J{b_start}:J{so_idx})", format_int)
+        so_idx += 2
 
-    for ws_sheet in [ws1, ws2]:
+    # Sheet 3 Build
+    ws3 = workbook_obj.add_worksheet('SDn wise Only BO')
+    build_merged_headers(ws3, header_mapping_b)
+    df_bpo_raw = core_ledger[core_ledger['office-type-code'] == 'BPO'].copy()
+    parent_skeleton = master_df[master_df['office-type-code'].isin(['SPO', 'HPO'])][['Sub Division', 'Sub Office']].drop_duplicates().copy()
+    agg_cols = ['par_Received', 'doc_Received', 'all_Received']
+    df_bpo_consolidated = df_bpo_raw.groupby(['Sub Division', 'Sub Office'])[agg_cols].sum().reset_index()
+    df_sheet3_data = parent_skeleton.merge(df_bpo_consolidated, on=['Sub Division', 'Sub Office'], how='left').fillna(0.0)
+    df_sheet3_data = df_sheet3_data.sort_values(by=['Sub Division', 'Sub Office']).reset_index(drop=True)
+    
+    bo_idx = 2
+    for sdn in subdivs:
+        df_sub = df_sheet3_data[df_sheet3_data['Sub Division'] == sdn]
+        if df_sub.empty: continue
+        b_start = bo_idx + 1
+        for item_idx, r in df_sub.reset_index(drop=True).iterrows():
+            ws3.set_row(bo_idx, 19)
+            ws3.write(bo_idx, 0, item_idx + 1, format_ctr)
+            ws3.write(bo_idx, 1, r['Sub Division'], format_txt)
+            ws3.write(bo_idx, 2, r['Sub Office'], format_txt)
+            ws3.write(bo_idx, 3, r['par_Received'], format_int)
+            for c_pos in [4,5,7,8,10,11,12,13,14,15,16]: ws3.write(bo_idx, c_pos, "", format_pct)
+            ws3.write(bo_idx, 6, r['doc_Received'], format_int)
+            ws3.write(bo_idx, 9, r['all_Received'], format_int)
+            bo_idx += 1
+        ws3.set_row(bo_idx, 22)
+        for c in range(17): ws3.write_blank(bo_idx, c, "", style_sub_total)
+        ws3.write(bo_idx, 1, f"{sdn} Sub Total", style_sub_total)
+        ws3.write_formula(bo_idx, 3, f"=SUM(D{b_start}:D{bo_idx})", format_int)
+        ws3.write_formula(bo_idx, 6, f"=SUM(G{b_start}:G{bo_idx})", format_int)
+        ws3.write_formula(bo_idx, 9, f"=SUM(J{b_start}:J{bo_idx})", format_int)
+        bo_idx += 2
+
+    # Sheet 4 Build
+    ws4 = workbook_obj.add_worksheet('All Only S.O')
+    build_merged_headers(ws4, header_mapping_b)
+    df_sheet4_data = df_so_filtered.sort_values(by=['Sub Office']).reset_index(drop=True)
+    flat_idx = 2
+    for item_idx, r in df_sheet4_data.iterrows():
+        ws4.set_row(flat_idx, 19)
+        ws4.write(flat_idx, 0, item_idx + 1, format_ctr)
+        ws4.write(flat_idx, 1, r['Sub Division'], format_txt)
+        ws4.write(flat_idx, 2, r['Sub Office'], format_txt)
+        ws4.write(flat_idx, 3, r['par_Received'], format_int)
+        ws4.write(flat_idx, 4, r['val_par_d0'], format_pct)
+        ws4.write(flat_idx, 5, r['val_par_d1'], format_pct)
+        ws4.write(flat_idx, 6, r['doc_Received'], format_int)
+        ws4.write(flat_idx, 7, r['val_doc_d0'], format_pct)
+        ws4.write(flat_idx, 8, r['val_doc_d1'], format_pct)
+        ws4.write(flat_idx, 9, r['all_Received'], format_int)
+        ws4.write(flat_idx, 10, r['val_all_d0'], format_pct)
+        ws4.write(flat_idx, 11, r['val_all_d1'], format_pct)
+        ws4.write(flat_idx, 12, r['val_prod'], format_pct)
+        ws4.write(flat_idx, 13, r['val_dss_d'], format_pct)
+        ws4.write(flat_idx, 14, r['val_dss_c'], format_pct)
+        ws4.write(flat_idx, 15, r['val_cod_d'], format_pct)
+        ws4.write(flat_idx, 16, r['val_cod_c'], format_pct)
+        flat_idx += 1
+    ws4.set_row(flat_idx, 22)
+    for c in range(17): ws4.write_blank(flat_idx, c, "", style_grand_total)
+    ws4.write(flat_idx, 1, "Total Row", style_grand_total)
+    ws4.write_formula(flat_idx, 3, f"=SUM(D3:D{flat_idx})", format_int)
+    ws4.write_formula(flat_idx, 6, f"=SUM(G3:G{flat_idx})", format_int)
+    ws4.write_formula(flat_idx, 9, f"=SUM(J3:J{flat_idx})", format_int)
+
+    # Sheet 5 Build
+    def evaluate_defaulter(row):
+        scores = []
+        if row['all_Received'] > 0: scores.append(row['val_all_d0'] < 0.90)
+        if row['prod_denom'] > 0: scores.append(row['val_prod'] < 0.90)
+        if row['dss_c_denom'] > 0: scores.append(row['val_dss_c'] < 0.90)
+        if row['cod_d_denom'] > 0: scores.append(row['val_cod_d'] < 0.90)
+        if row['cod_c_denom'] > 0: scores.append(row['val_cod_c'] < 0.90)
+        return all(scores) if scores else False
+
+    df_defaulters = core_ledger[core_ledger.apply(evaluate_defaulter, axis=1)].sort_values(by=['Canonical_Office_Name']).reset_index(drop=True)
+    ws5 = workbook_obj.add_worksheet('Defaulter Offices')
+    header_mapping_def = [c for c in header_mapping_a if c[1] != 'D+1 Delivery %']
+    build_merged_headers(ws5, header_mapping_def)
+    
+    def_idx = 2
+    for item_idx, r in df_defaulters.iterrows():
+        ws5.set_row(def_idx, 19)
+        ws5.write(def_idx, 0, item_idx + 1, format_ctr)
+        ws5.write(def_idx, 1, r['Sub Division'], format_txt)
+        ws5.write(def_idx, 2, r['Sub Office'], format_txt)
+        ws5.write(def_idx, 3, r['Canonical_Office_Name'], format_txt)
+        ws5.write(def_idx, 4, r['office_id'], format_ctr)
+        ws5.write(def_idx, 5, r['office-type-code'], format_ctr)
+        ws5.write(def_idx, 6, r['par_Received'], format_int)
+        ws5.write(def_idx, 7, r['val_par_d0'], format_pct)
+        ws5.write(def_idx, 8, r['doc_Received'], format_int)
+        ws5.write(def_idx, 9, r['val_doc_d0'], format_pct)
+        ws5.write(def_idx, 10, r['all_Received'], format_int)
+        ws5.write(def_idx, 11, r['val_all_d0'], format_pct)
+        ws5.write(def_idx, 12, r['val_all_rts'], format_pct)
+        ws5.write(def_idx, 13, r['val_all_not_invoiced'], format_int)
+        ws5.write(def_idx, 14, r['val_prod'], format_pct)
+        ws5.write(def_idx, 15, r['val_dss_d'], format_pct)
+        ws5.write(def_idx, 16, r['val_dss_c'], format_pct)
+        ws5.write(def_idx, 17, r['val_cod_d'], format_pct)
+        ws5.write(def_idx, 18, r['val_cod_c'], format_pct)
+        def_idx += 1
+
+    for ws_sheet in [ws1, ws2, ws3, ws4, ws5]:
         ws_sheet.set_column(0, 0, 7)
         ws_sheet.set_column(1, 3, 26)
         ws_sheet.set_column(4, 5, 13)
-        ws_sheet.set_column(6, 21, 15)
+        ws_sheet.set_column(6, 23, 15)
 
     excel_engine.close()
     output_stream.seek(0)
