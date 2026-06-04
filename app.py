@@ -5,20 +5,11 @@ import io
 import datetime
 import pytz
 
+# Timezone Rule Anchor
 IST = pytz.timezone('Asia/Kolkata')
 now_ist = datetime.datetime.now(IST)
 
 st.set_page_config(page_title="MMU Gem Karad Division", page_icon="🇮🇳", layout="wide")
-
-SHEET1_COLUMNS = [
-    "Sr. No.", "Sub Division Name", "Sub Office Name", "Office Name", "Office ID", "Office Type",
-    "Parcel_Received", "Parcel_D+0_Delivery_%", "Parcel_D+1_Delivery_%",
-    "Documents_Received", "Documents_D+0_Delivery_%", "Documents_D+1_Delivery_%",
-    "All_Products_Received", "All_Products_D+0_Delivery_%", "All_Products_D+1_Delivery_%",
-    "Same Day RTS %", "Articles Not Invoiced Count",
-    "Delivery Productivity %", "DSS Usage % (Daily)", "DSS Usage % (Consolidated)",
-    "COD Digital % (Daily)", "COD Digital % (Consolidated)"
-]
 
 if "orphan_log" not in st.session_state:
     st.session_state.orphan_log = []
@@ -27,6 +18,7 @@ st.title("🇮🇳 MMU Gem Karad Division")
 st.subheader("Enterprise Data Processing Utility — India Post Operations")
 st.markdown(f"**System Chronometer Anchor (IST):** `{now_ist.strftime('%Y-%m-%d %H:%M:%S GMT+5:30')}`")
 
+# Sidebar Configuration Slots
 st.sidebar.header("📋 Workflow: 0. Daily Report")
 p1_range = st.sidebar.text_input("Prompt 1: Shared Transit Range (From/To)", "01.05.2026 to 23.05.2026")
 p2_date  = st.sidebar.text_input("Prompt 2: Single Performance Date", "30.05.2026")
@@ -203,6 +195,73 @@ if st.sidebar.button("🚀 Process Operational Records", use_container_width=Tru
     format_txt   = workbook_obj.add_format({'align': 'left', 'valign': 'vcenter', 'border': 1})
     format_ctr   = workbook_obj.add_format({'align': 'center', 'valign': 'vcenter', 'border': 1})
 
+    header_mapping_a = [
+        ('Sr. No.', 'Sr. No.', format_ctr),
+        ('Hierarchy Identifiers', 'Sub Division Name', format_txt),
+        ('Hierarchy Identifiers', 'Sub Office Name', format_txt),
+        ('Hierarchy Identifiers', 'Office Name', format_txt),
+        ('Hierarchy Identifiers', 'Office ID', format_ctr),
+        ('Hierarchy Identifiers', 'Office Type', format_ctr),
+        (f'Parcel ({p1_range})', 'Received', format_int),
+        (f'Parcel ({p1_range})', 'D+0 Delivery %', format_pct),
+        (f'Parcel ({p1_range})', 'D+1 Delivery %', format_pct),
+        (f'Documents ({p1_range})', 'Received', format_int),
+        (f'Documents ({p1_range})', 'D+0 Delivery %', format_pct),
+        (f'Documents ({p1_range})', 'D+1 Delivery %', format_pct),
+        (f'All Products ({p1_range})', 'Received', format_int),
+        (f'All Products ({p1_range})', 'D+0 Delivery %', format_pct),
+        (f'All Products ({p1_range})', 'D+1 Delivery %', format_pct),
+        ('Custom Performance Tracking', 'Same Day RTS %', format_pct),
+        ('Custom Performance Tracking', 'Articles Not Invoiced Count', format_int),
+        (f'Productivity ({p2_date})', 'Delivery Productivity %', format_pct),
+        (f'DSS Daily ({p3_date})', 'DSS Usage %', format_pct),
+        (f'DSS Cumulative ({p4_range})', 'DSS Usage %', format_pct),
+        (f'COD Daily ({p5_date})', 'COD Digital Transaction %', format_pct),
+        (f'COD Cumulative ({p6_range})', 'COD Digital Transaction %', format_pct)
+    ]
+
+    header_mapping_b = [
+        ('Sr. No.', 'Sr. No.', format_ctr),
+        ('Hierarchy Identifiers', 'Sub Division Name', format_txt),
+        ('Hierarchy Identifiers', 'Sub Office Name', format_txt),
+        (f'Parcel ({p1_range})', 'Received', format_int),
+        (f'Parcel ({p1_range})', 'D+0 Delivery %', format_pct),
+        (f'Parcel ({p1_range})', 'D+1 Delivery %', format_pct),
+        (f'Documents ({p1_range})', 'Received', format_int),
+        (f'Documents ({p1_range})', 'D+0 Delivery %', format_pct),
+        (f'Documents ({p1_range})', 'D+1 Delivery %', format_pct),
+        (f'All Products ({p1_range})', 'Received', format_int),
+        (f'All Products ({p1_range})', 'D+0 Delivery %', format_pct),
+        (f'All Products ({p1_range})', 'D+1 Delivery %', format_pct),
+        (f'Productivity ({p2_date})', 'Delivery Productivity %', format_pct),
+        (f'DSS Daily ({p3_date})', 'DSS Usage %', format_pct),
+        (f'DSS Cumulative ({p4_range})', 'DSS Usage %', format_pct),
+        (f'COD Daily ({p5_date})', 'COD Digital Transaction %', format_pct),
+        (f'COD Cumulative ({p6_range})', 'COD Digital Transaction %', format_pct)
+    ]
+
+    def build_merged_headers(ws, specification):
+        ws.set_row(0, 26)
+        ws.set_row(1, 24)
+        group_anchor = None
+        start_col = 0
+        for i, (group_name, sub_name, _) in enumerate(specification):
+            if group_anchor is None:
+                group_anchor = group_name
+                start_col = i
+            elif group_name != group_anchor:
+                if start_col == i - 1:
+                    ws.write(0, start_col, group_anchor, style_main_header)
+                else:
+                    ws.merge_range(0, start_col, 0, i - 1, group_anchor, style_main_header)
+                group_anchor = group_name
+                start_col = i
+            ws.write(1, i, sub_name, style_sub_header)
+        if start_col == len(specification) - 1:
+            ws.write(0, start_col, group_anchor, style_main_header)
+        else:
+            ws.merge_range(0, start_col, 0, len(specification) - 1, group_anchor, style_main_header)
+
     ws1 = workbook_obj.add_worksheet('Raw Data Layout')
     build_merged_headers(ws1, header_mapping_a)
     
@@ -233,7 +292,48 @@ if st.sidebar.button("🚀 Process Operational Records", use_container_width=Tru
         ws1.write(r_idx, 21, r['val_cod_c'], format_pct)
         r_idx += 1
 
+    ws1.set_row(r_idx, 22)
+    for col_c in range(22):
+        ws1.write_blank(r_idx, col_c, "", style_grand_total)
+    ws1.write(r_idx, 1, "Karad Division Grand Total", style_grand_total)
+    ws1.write_formula(r_idx, 6, f"=SUM(G3:G{r_idx})", format_int)
+    ws1.write_formula(r_idx, 9, f"=SUM(J3:J{r_idx})", format_int)
+    ws1.write_formula(r_idx, 12, f"=SUM(M3:M{r_idx})", format_int)
+    ws1.write_formula(r_idx, 16, f"=SUM(Q3:Q{r_idx})", format_int)
+
+    # Sheet 2 Setup
+    ws2 = workbook_obj.add_worksheet('SDn wise Only SO')
+    build_merged_headers(ws2, header_mapping_b)
+    df_so_filtered = core_ledger[core_ledger['office-type-code'].isin(['SPO', 'HPO'])].copy()
+    so_idx = 2
+    for item_idx, r in df_so_filtered.iterrows():
+        ws2.set_row(so_idx, 19)
+        ws2.write(so_idx, 0, item_idx + 1, format_ctr)
+        ws2.write(so_idx, 1, r['Sub Division'], format_txt)
+        ws2.write(so_idx, 2, r['Sub Office'], format_txt)
+        ws2.write(so_idx, 3, r['par_Received'], format_int)
+        ws2.write(so_idx, 4, r['val_par_d0'], format_pct)
+        ws2.write(so_idx, 5, r['val_par_d1'], format_pct)
+        ws2.write(so_idx, 6, r['doc_Received'], format_int)
+        ws2.write(so_idx, 7, r['val_doc_d0'], format_pct)
+        ws2.write(so_idx, 8, r['val_doc_d1'], format_pct)
+        ws2.write(so_idx, 9, r['all_Received'], format_int)
+        ws2.write(so_idx, 10, r['val_all_d0'], format_pct)
+        ws2.write(so_idx, 11, r['val_all_d1'], format_pct)
+        ws2.write(so_idx, 12, r['val_prod'], format_pct)
+        ws2.write(so_idx, 13, r['val_dss_d'], format_pct)
+        ws2.write(so_idx, 14, r['val_dss_c'], format_pct)
+        ws2.write(so_idx, 15, r['val_cod_d'], format_pct)
+        ws2.write(so_idx, 16, r['val_cod_c'], format_pct)
+        so_idx += 1
+
+    for ws_sheet in [ws1, ws2]:
+        ws_sheet.set_column(0, 0, 7)
+        ws_sheet.set_column(1, 3, 26)
+        ws_sheet.set_column(4, 5, 13)
+        ws_sheet.set_column(6, 21, 15)
+
     excel_engine.close()
     output_stream.seek(0)
-    st.success("🏁 Verification complete. Unified ledger compiled.")
-    st.download_button(label="📥 Download Production Workbook", data=output_stream, file_name="MMU_Report.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", use_container_width=True)
+    st.success("🏁 Verification complete. Unified ledger compiled successfully.")
+    st.download_button(label="📥 Download Production Workbook", data=output_stream, file_name="MMU_Report_Karad.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", use_container_width=True)
