@@ -272,10 +272,13 @@ if st.sidebar.button("🚀 Process Operational Records", use_container_width=Tru
     fill_columns = [col for col in core_ledger.columns if col not in ['Sub Division', 'Sub Office', 'Branch Office', 'office_id', 'office-type-code', 'Canonical_Office_Name']]
     core_ledger[fill_columns] = core_ledger[fill_columns].fillna(0.0)
 
-    # Safe Float Calculations Framework (KeyError Fixed)
+    # Isolated NumPy Array Processing Framework (Python 3.14/numexpr Loop Fixed)
     def generate_ratio_vector(df, numer, denom):
         n_val = df[numer] if isinstance(numer, str) else numer
-        return np.where(df[denom] > 0, n_val / df[denom], np.nan)
+        num_arr = pd.to_numeric(n_val, errors='coerce').to_numpy().astype(float)
+        den_arr = pd.to_numeric(df[denom], errors='coerce').to_numpy().astype(float)
+        with np.errstate(divide='ignore', invalid='ignore'):
+            return np.where(den_arr > 0, num_arr / den_arr, np.nan)
 
     p_d0_sum = core_ledger['par_D0 Delivered'] + core_ledger['par_D0 Redirected'] + core_ledger['par_D0 Returned']
     p_d1_sum = core_ledger['par_D1 Delivered'] + core_ledger['par_D1 Redirected'] + core_ledger['par_D1 Returned']
@@ -301,13 +304,13 @@ if st.sidebar.button("🚀 Process Operational Records", use_container_width=Tru
     core_ledger = core_ledger.sort_values(by=['Sub Division', 'Sub Office', 'Branch Office']).reset_index(drop=True)
 
     # ==========================================
-    # 5. EXCEL EXPORT LAYOUT DESIGN MATRIX
+    # 5. EXCEL FORMAT STRUCTURE GENERATION DEFS
     # ==========================================
     output_stream = io.BytesIO()
     excel_engine = pd.ExcelWriter(output_stream, engine='xlsxwriter')
     workbook_obj = excel_engine.book
 
-    # Vertically broken definitions to prevent mobile truncation issues
+    # Short line components to guarantee safety from layout truncations
     style_main_header = workbook_obj.add_format({
         'bg_color': '#1F497D', 'font_color': 'white', 'bold': True, 
         'align': 'center', 'valign': 'vcenter', 'border': 1, 'font_size': 11
@@ -317,7 +320,8 @@ if st.sidebar.button("🚀 Process Operational Records", use_container_width=Tru
         'align': 'center', 'valign': 'vcenter', 'border': 1, 'font_size': 10
     })
     style_sub_total   = workbook_obj.add_format({
-        'bg_color': '#F2F2F2', 'bold': True, 'border': 1, 'font_size': 10, 'align': 'right'
+        'bg_color': '#F2F2F2', 'bold': True, 'border': 1, 
+        'font_size': 10, 'align': 'right'
     })
     style_grand_total = workbook_obj.add_format({
         'bg_color': '#D9D9D9', 'bold': True, 'border': 1, 'font_size': 10, 
@@ -432,7 +436,7 @@ if st.sidebar.button("🚀 Process Operational Records", use_container_width=Tru
         ws1.write_formula(r_idx, 20, f"=IFERROR(AJ{r_idx+1}/AK{r_idx+1}, \"\")", format_pct)
         ws1.write_formula(r_idx, 21, f"=IFERROR(AL{r_idx+1}/AM{r_idx+1}, \"\")", format_pct)
         
-        # Hidden matrix ledger channels (Bug B-01/B-13 setup)
+        # Hidden matrix grid values
         ws1.write(r_idx, 22, (r['par_D0 Delivered'] + r['par_D0 Redirected'] + r['par_D0 Returned']), format_int)
         ws1.write(r_idx, 23, (r['par_D1 Delivered'] + r['par_D1 Redirected'] + r['par_D1 Returned']), format_int)
         ws1.write(r_idx, 24, (r['doc_D0 Delivered'] + r['doc_D0 Redirected'] + r['doc_D0 Returned']), format_int)
