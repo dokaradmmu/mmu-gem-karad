@@ -1,7 +1,7 @@
 """
 Application: MMU Gem Karad Division Data Processing Utility
 Engineers: Senior Full-Stack Engineer / Data Architect / Python Developer
-Dependencies: streamlit, pandas, openpyxl, xlsxwriter, pytz
+Dependencies: streamlit, pandas, openpyxl, xlsxwriter
 Validation Framework: Fully compliant with Bug Fixes B-01 through B-15
 """
 
@@ -10,12 +10,12 @@ import pandas as pd
 import numpy as np
 import io
 import datetime
-import pytz
 
 # ==========================================
-# 1. TIMEZONE OVERRIDE ANCHOR (SPEC §1)
+# 1. TIMEZONE OVERRIDE ANCHOR (NO PYTZ DEPENDENCY)
 # ==========================================
-IST = pytz.timezone('Asia/Kolkata')
+# UTC+5:30 for India Standard Time using Python standard library
+IST = datetime.timezone(datetime.timedelta(hours=5, minutes=30))
 now_ist = datetime.datetime.now(IST)
 
 st.set_page_config(
@@ -574,7 +574,7 @@ if st.sidebar.button("🚀 Process Operational Records", use_container_width=Tru
         ws.write_formula(cursor, 5, f"=IFERROR(SUM(S{summary_start_row}:S{summary_end_row})/D{cursor+1}, \"\")", format_pct)
         ws.write_formula(cursor, 6, f"=SUM(G{summary_start_row}:G{summary_end_row})", format_int)
         ws.write_formula(cursor, 7, f"=IFERROR(SUM(T{summary_start_row}:T{summary_end_row})/G{cursor+1}, \"\")", format_pct)
-        ws.write_formula(cursor, 8, f"=IFERROR(SUM(U{summary_start_row}:U{summary_end_row})/G{cursor+1}, \"\")", format_pct)
+        ws.write_formula(cursor, 8, f"=IFERROR(SUM(S{summary_start_row}:S{summary_end_row})/G{cursor+1}, \"\")", format_pct)
         ws.write_formula(cursor, 9, f"=SUM(J{summary_start_row}:J{summary_end_row})", format_int)
         ws.write_formula(cursor, 10, f"=IFERROR(SUM(V{summary_start_row}:V{summary_end_row})/J{cursor+1}, \"\")", format_pct)
         ws.write_formula(cursor, 11, f"=IFERROR(SUM(W{summary_start_row}:W{summary_end_row})/J{cursor+1}, \"\")", format_pct)
@@ -717,19 +717,19 @@ if st.sidebar.button("🚀 Process Operational Records", use_container_width=Tru
         ws5.write(def_idx, 5, r['office-type-code'], format_ctr)
         
         ws5.write(def_idx, 6, r['par_Received'], format_int)
-        ws5.write_formula(def_idx, 7, f"=IFERROR(V{def_idx+1}/G{def_idx+1}, \"\")", format_pct)
+        ws5.write_formula(def_idx, 7, f"=IFERROR(T{def_idx+1}/G{def_idx+1}, \"\")", format_pct)
         ws5.write(def_idx, 8, r['doc_Received'], format_int)
-        ws5.write_formula(def_idx, 9, f"=IFERROR(W{def_idx+1}/I{def_idx+1}, \"\")", format_pct)
+        ws5.write_formula(def_idx, 9, f"=IFERROR(U{def_idx+1}/I{def_idx+1}, \"\")", format_pct)
         ws5.write(def_idx, 10, r['all_Received'], format_int)
-        ws5.write_formula(def_idx, 11, f"=IFERROR(X{def_idx+1}/K{def_idx+1}, \"\")", format_pct)
-        ws5.write_formula(def_idx, 12, f"=IFERROR(Y{def_idx+1}/K{def_idx+1}, \"\")", format_pct)
+        ws5.write_formula(def_idx, 11, f"=IFERROR(V{def_idx+1}/K{def_idx+1}, \"\")", format_pct)
+        ws5.write_formula(def_idx, 12, f"=IFERROR(W{def_idx+1}/K{def_idx+1}, \"\")", format_pct)
         ws5.write(def_idx, 13, r['val_all_not_invoiced'], format_int)
         
-        ws5.write_formula(def_idx, 14, f"=IFERROR(Z{def_idx+1}/AA{def_idx+1}, \"\")", format_pct)
-        ws5.write_formula(def_idx, 15, f"=IFERROR(AB{def_idx+1}/AC{def_idx+1}, \"\")", format_pct)
-        ws5.write_formula(def_idx, 16, f"=IFERROR(AD{def_idx+1}/AE{def_idx+1}, \"\")", format_pct)
-        ws5.write_formula(def_idx, 17, f"=IFERROR(AF{def_idx+1}/AG{def_idx+1}, \"\")", format_pct)
-        ws5.write_formula(def_idx, 18, f"=IFERROR(AH{def_idx+1}/AI{def_idx+1}, \"\")", format_pct)
+        ws5.write_formula(def_idx, 14, f"=IFERROR(X{def_idx+1}/Y{def_idx+1}, \"\")", format_pct)
+        ws5.write_formula(def_idx, 15, f"=IFERROR(Z{def_idx+1}/AA{def_idx+1}, \"\")", format_pct)
+        ws5.write_formula(def_idx, 16, f"=IFERROR(AB{def_idx+1}/AC{def_idx+1}, \"\")", format_pct)
+        ws5.write_formula(def_idx, 17, f"=IFERROR(AD{def_idx+1}/AE{def_idx+1}, \"\")", format_pct)
+        ws5.write_formula(def_idx, 18, f"=IFERROR(AF{def_idx+1}/AG{def_idx+1}, \"\")", format_pct)
         
         # Populate processing structures inside hidden columns
         ws5.write(def_idx, 19, (r['par_D0 Delivered'] + r['par_D0 Redirected'] + r['par_D0 Returned']), format_int)
