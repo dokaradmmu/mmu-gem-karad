@@ -232,9 +232,10 @@ if st.sidebar.button("🚀 Process Operational Records", use_container_width=Tru
     fill_columns = [col for col in core_ledger.columns if col not in ['Sub Division', 'Sub Office', 'Branch Office', 'office_id', 'office-type-code', 'Canonical_Office_Name']]
     core_ledger[fill_columns] = core_ledger[fill_columns].fillna(0.0)
 
-    # In-Memory Floating Vector Compilation passes (Bug B-01 preservation)
+    # Flexible Input Verification (KeyError Resolution Matrix)
     def generate_ratio_vector(df, numer, denom):
-        return np.where(df[denom] > 0, df[numer] / df[denom], np.nan)
+        n_val = df[numer] if isinstance(numer, str) else numer
+        return np.where(df[denom] > 0, n_val / df[denom], np.nan)
 
     core_ledger['val_par_d0'] = generate_ratio_vector(core_ledger, core_ledger['par_D0 Delivered'] + core_ledger['par_D0 Redirected'] + core_ledger['par_D0 Returned'], 'par_Received')
     core_ledger['val_par_d1'] = generate_ratio_vector(core_ledger, core_ledger['par_D1 Delivered'] + core_ledger['par_D1 Redirected'] + core_ledger['par_D1 Returned'], 'par_Received')
@@ -574,7 +575,7 @@ if st.sidebar.button("🚀 Process Operational Records", use_container_width=Tru
         ws.write_formula(cursor, 5, f"=IFERROR(SUM(S{summary_start_row}:S{summary_end_row})/D{cursor+1}, \"\")", format_pct)
         ws.write_formula(cursor, 6, f"=SUM(G{summary_start_row}:G{summary_end_row})", format_int)
         ws.write_formula(cursor, 7, f"=IFERROR(SUM(T{summary_start_row}:T{summary_end_row})/G{cursor+1}, \"\")", format_pct)
-        ws.write_formula(cursor, 8, f"=IFERROR(SUM(S{summary_start_row}:S{summary_end_row})/G{cursor+1}, \"\")", format_pct)
+        ws.write_formula(cursor, 8, f"=IFERROR(SUM(U{summary_start_row}:U{summary_end_row})/G{cursor+1}, \"\")", format_pct)
         ws.write_formula(cursor, 9, f"=SUM(J{summary_start_row}:J{summary_end_row})", format_int)
         ws.write_formula(cursor, 10, f"=IFERROR(SUM(V{summary_start_row}:V{summary_end_row})/J{cursor+1}, \"\")", format_pct)
         ws.write_formula(cursor, 11, f"=IFERROR(SUM(W{summary_start_row}:W{summary_end_row})/J{cursor+1}, \"\")", format_pct)
