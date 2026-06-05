@@ -3,29 +3,32 @@ Application: MMU Gem Karad Division Data Processing Utility
 Engineers: Senior Full-Stack Engineer / Data Architect / Python Developer
 Dependencies: streamlit, pandas, openpyxl, xlsxwriter
 Validation Framework: Fully compliant with Bug Fixes B-01 through B-15
-Self-Healing Layer: Writable temporary sandbox storage redirector
+Self-Healing Layer: Writable user-space environment enforcer patch
 """
 
 import subprocess
 import sys
 import os
+import site
 
 # ==========================================
-# 0. RUNTIME SETUP SELF-HEALING ENFORCER (SANDBOX PATCH)
+# 0. RUNTIME SETUP SELF-HEALING ENFORCER (USER-SPACE PATCH)
 # ==========================================
-# Directs installations into a writable temporary container allocation
-target_dir = "/tmp/local_packages"
-if target_dir not in sys.path:
-    sys.path.insert(0, target_dir)
+# Force registration into the container's private home site-packages directory
+v_major = sys.version_info.major
+v_minor = sys.version_info.minor
+user_site = os.path.expanduser(f"~/.local/lib/python{v_major}.{v_minor}/site-packages")
+
+os.makedirs(user_site, exist_ok=True)
+site.addsitedir(user_site)
 
 for package_name in ["xlsxwriter", "openpyxl"]:
     try:
         __import__(package_name)
     except ImportError:
-        os.makedirs(target_dir, exist_ok=True)
         subprocess.check_call([
             sys.executable, "-m", "pip", "install", 
-            "--target=" + target_dir, package_name
+            "--user", package_name
         ])
 
 import streamlit as st
@@ -362,6 +365,7 @@ if st.sidebar.button("🚀 Process Operational Records", use_container_width=Tru
         else:
             ws.merge_range(0, start_col, 0, len(specification) - 1, group_anchor, style_main_header)
 
+    # Sheet 1 Build
     ws1 = workbook_obj.add_worksheet('Raw Data Layout')
     build_merged_headers(ws1, header_mapping_a)
     
@@ -589,10 +593,12 @@ if st.sidebar.button("🚀 Process Operational Records", use_container_width=Tru
         ws.write_formula(cursor, 16, f"=IFERROR(SUM(AF{summary_start_row}:AF{summary_end_row})/SUM(AG{summary_start_row}:AG{summary_end_row}), \"\")", format_pct)
         ws.set_column(17, 32, None, None, {'hidden': True})
 
+    # Sheet 2
     ws2 = workbook_obj.add_worksheet('SDn wise Only SO')
     df_so_filtered = core_ledger[core_ledger['office-type-code'].isin(['SPO', 'HPO'])].copy()
     populate_type_b_sheet(ws2, df_so_filtered)
 
+    # Sheet 3
     ws3 = workbook_obj.add_worksheet('SDn wise Only BO')
     df_bpo_raw = core_ledger[core_ledger['office-type-code'] == 'BPO'].copy()
     parent_skeleton = master_df[master_df['office-type-code'].isin(['SPO', 'HPO'])][['Sub Division', 'Sub Office']].drop_duplicates().copy()
@@ -608,6 +614,7 @@ if st.sidebar.button("🚀 Process Operational Records", use_container_width=Tru
     df_sheet3_final = df_sheet3_final.sort_values(by=['Sub Division', 'Sub Office']).reset_index(drop=True)
     populate_type_b_sheet(ws3, df_sheet3_final)
 
+    # Sheet 4
     ws4 = workbook_obj.add_worksheet('All Only S.O')
     build_merged_headers(ws4, header_mapping_b)
     df_sheet4_final = df_so_filtered.sort_values(by=['Sub Office']).reset_index(drop=True)
@@ -675,6 +682,7 @@ if st.sidebar.button("🚀 Process Operational Records", use_container_width=Tru
     ws4.write_formula(flat_idx, 16, f"=IFERROR(SUM(AF3:AF{flat_idx})/SUM(AG3:AG{flat_idx}), \"\")", format_pct)
     ws4.set_column(17, 32, None, None, {'hidden': True})
 
+    # Sheet 5
     def evaluate_defaulter(row):
         scores = []
         if row['all_Received'] > 0: scores.append(row['val_all_d0'] < 0.90)
