@@ -3,7 +3,21 @@ Application: MMU Gem Karad Division Data Processing Utility
 Engineers: Senior Full-Stack Engineer / Data Architect / Python Developer
 Dependencies: streamlit, pandas, openpyxl, xlsxwriter
 Validation Framework: Fully compliant with Bug Fixes B-01 through B-15
+Self-Healing Layer: Dynamic runtime package installation enforcer
 """
+
+import subprocess
+import sys
+
+# ==========================================
+# 0. RUNTIME SETUP SELF-HEALING ENFORCER
+# ==========================================
+# This dynamically installs missing excel engines if Streamlit Cloud bypasses requirements.txt
+for package_name in ["xlsxwriter", "openpyxl"]:
+    try:
+        __import__(package_name)
+    except ImportError:
+        subprocess.check_call([sys.executable, "-m", "pip", "install", package_name])
 
 import streamlit as st
 import pandas as pd
@@ -166,7 +180,6 @@ if st.sidebar.button("🚀 Process Operational Records", use_container_width=Tru
     df_doc_fam    = compile_transit_family([raw_03, raw_04])
     df_all_fam    = compile_transit_family([raw_05])
 
-    # Dynamic Column Fallback Framework for Productivity Matrix
     if raw_06 is not None:
         p_cols = ['invoice-count', 'delivery-count', 'return-count', 'redirection-count', 'deposit-count']
         for c in p_cols:
@@ -179,7 +192,6 @@ if st.sidebar.button("🚀 Process Operational Records", use_container_width=Tru
     else:
         df_prod_ledger = pd.DataFrame(columns=['office_id', 'invoice-count', 'prod_num'])
 
-    # Dynamic Fallback Framework for DSS Matrix
     def aggregate_dss(df):
         if df is not None:
             for c in ['total_pdm_art_count', 'total_dss_art_count']:
@@ -193,7 +205,6 @@ if st.sidebar.button("🚀 Process Operational Records", use_container_width=Tru
     df_dss_d_ledger = aggregate_dss(raw_07)
     df_dss_c_ledger = aggregate_dss(raw_08)
 
-    # Dynamic Fallback Framework for COD Matrix
     def aggregate_cod(df):
         if df is not None:
             for c in ['no_digital_count', 'no-cod-articles']:
@@ -207,7 +218,6 @@ if st.sidebar.button("🚀 Process Operational Records", use_container_width=Tru
     df_cod_d_ledger = aggregate_cod(raw_09)
     df_cod_c_ledger = aggregate_cod(raw_10)
 
-    # Main Ledger Merge
     core_ledger = master_df[['Sub Division', 'Sub Office', 'Branch Office', 'office_id', 'office-type-code', 'Canonical_Office_Name']].copy()
     core_ledger = core_ledger.merge(df_parcel_fam, on='office_id', how='left').rename(columns={c: f"par_{c}" for c in TRANSIT_COLS})
     core_ledger = core_ledger.merge(df_doc_fam, on='office_id', how='left').rename(columns={c: f"doc_{c}" for c in TRANSIT_COLS})
@@ -251,7 +261,6 @@ if st.sidebar.button("🚀 Process Operational Records", use_container_width=Tru
 
     core_ledger = core_ledger.sort_values(by=['Sub Division', 'Sub Office', 'Branch Office']).reset_index(drop=True)
 
-    # Excel Generation Setup
     output_stream = io.BytesIO()
     excel_engine = pd.ExcelWriter(output_stream, engine='xlsxwriter')
     workbook_obj = excel_engine.book
